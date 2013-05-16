@@ -1,0 +1,121 @@
+#!/usr/bin/perl
+
+use strict;
+use DBI();
+use Data::Dumper;
+
+  # Connect to the database.
+  my $dbh = DBI->connect("DBI:mysql:database=testdb;host=localhost",
+                         "testuser", "cflex",
+                         {'RaiseError' => 1});
+
+open my $file, '>', 'file.csv';
+print $file;
+
+
+my @ano = ('2013');
+my $mes = {
+    '01' => {
+  'inicio' => '-01-01 00:00:00',
+	'fim' => '-02-01 00:00:00',
+	'nome' => 'janeiro',
+    },	    
+
+    '02' => {
+	'inicio' => '-02-01 00:00:00',
+	'fim' => '-03-01 00:00:00',
+	'nome' => 'fevereiro',
+    },
+
+    '03' => {
+	'inicio' => '-03-01 00:00:00',
+	'fim' => '-04-01 00:00:00',
+	'nome' => 'março',
+    },
+
+    '04' => {
+	'inicio' => '-04-01 00:00:00',
+	'fim' => '-05-01 00:00:00',
+	'nome' => 'Abril',
+    },
+
+    '05' => {
+	'inicio' => '-05-01 00:00:00',
+	'fim' => '-06-01 00:00:00',
+	'nome' => 'Maio',
+    },
+
+    '06' => {
+	'inicio' => '-06-01 00:00:00',
+	'fim' => '-07-01 00:00:00',
+	'nome' => 'Junho',
+    },
+
+    '07' => {
+	'inicio' => '-07-01 00:00:00',
+	'fim' => '-08-01 00:00:00',
+	'nome' => 'Junho',
+    },
+
+    '08' => {
+	'inicio' => '-08-01 00:00:00',
+	'fim' => '-09-01 00:00:00',
+	'nome' => 'Agosto',
+    },
+
+    '09' => {
+	'inicio' => '-09-01 00:00:00',
+	'fim' => '-10-01 00:00:00',
+	'nome' => 'Setembro',
+    },
+
+    '10' => {
+	'inicio' => '-10-01 00:00:00',
+	'fim' => '-11-01 00:00:00',
+	'nome' => 'Outubro',
+    },
+
+    '11' => {
+	'inicio' => '-11-01 00:00:00',
+	'fim' => '-12-01 00:00:00',
+	'nome' => 'Novembro',
+    },
+
+    '12' => {
+	'inicio' => '-12-01 00:00:00',
+	'fim' => '-12-30 00:00:00',
+	'nome' => 'Dezembro',
+    },
+
+};
+
+foreach my $ano (@ano) {	    
+
+    for my $MES ( sort { $a cmp $b }  keys $mes) {
+	
+	my $inicio = $ano . $mes->{$MES}->{'inicio'};
+	my $fim = $ano . $mes->{$MES}->{'fim'};
+
+	my $sth = $dbh->prepare(qq{
+SELECT a.work_time,b.login_name,a.bug_when,a.bug_id,c.name FROM longdescs a, profiles b, products c, bugs d WHERE bug_when > '$inicio' and bug_when < 'fim' and a.who = b.userid  and d.bug_id = a.bug_id and c.id = d.product_id
+});
+
+    my $hash = {};
+    $sth->execute;
+    while (my $ref = $sth->fetchrow_hashref()) {
+	$hash->{$ref->{'bug_id'}}->{$ref->{'login_name'}}->{'timers'} += $ref->{'work_time'};
+	$hash->{$ref->{'bug_id'}}->{$ref->{'login_name'}}->{'project'} = $ref->{'name'};
+    }
+
+    
+    print "\n\n\t mes: $MES\n\n";
+    for my $sa ( keys $hash) {
+	for my $login ( keys $hash->{$sa} ) {
+	print $ano . '-' . $MES,";$sa;$login;",$hash->{$sa}->{$login}->{'timers'},";",$hash->{$sa}->{$login}->{'project'},"\n";
+	}
+    }
+$sth->finish();
+}
+    
+}
+close $file;
